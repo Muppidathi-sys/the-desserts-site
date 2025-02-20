@@ -46,6 +46,11 @@ export function Reports() {
     .sort(([,a], [,b]) => b - a)
     .slice(0, 5);
 
+  // Add proper type for the sorting
+  const sortedOrders = [...orders].sort((a: Order, b: Order) => 
+    Number(b.total_amount) - Number(a.total_amount)
+  );
+
   return (
     <div className="space-y-6">
       {/* Today's Summary */}

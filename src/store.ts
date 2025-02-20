@@ -45,65 +45,19 @@ const store = create<State & Actions>()(
 
         addOrder: async (order) => {
           try {
-            // Get current user
-            const { user } = useStore.getState();
-            if (!user || !user.user_id) {
-              throw new Error('No authenticated user found');
-            }
-
-            // First create the order
-            const { data: orderData, error: orderError } = await supabase
+            const { data, error } = await supabase
               .from('orders')
-              .insert({
-                order_number: order.order_number,
-                status: 'new',
-                total_amount: order.total_amount,
-                notes: order.notes || '',
-                created_by: user.user_id, // Use the actual user UUID
-                payment_method: order.payment_method || null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
+              .insert([order])
               .select()
               .single();
 
-            if (orderError) {
-              console.error('Error creating order:', orderError);
-              throw orderError;
-            }
+            if (error) throw error;
 
-            console.log('Created order:', orderData);
-
-            // Then create the order items
-            const orderItems = order.items.map(item => ({
-              order_id: orderData.order_id,
-              item_id: item.item_id,
-              quantity: item.quantity,
-              item_price: item.item_price,
-              subtotal: item.quantity * item.item_price,
-              special_instructions: item.special_instructions || ''
-            }));
-
-            const { error: itemsError } = await supabase
-              .from('order_items')
-              .insert(orderItems);
-
-            if (itemsError) {
-              console.error('Error creating order items:', itemsError);
-              throw itemsError;
-            }
-
-            // Update local state with the new order
             set((state) => ({
-              orders: [...state.orders, {
-                ...orderData,
-                items: order.items
-              }]
+              orders: [...state.orders, data]
             }));
-
-            return orderData;
           } catch (err) {
-            console.error('Error in addOrder:', err);
+            console.error('Error adding order:', err);
             throw err;
           }
         },
@@ -112,17 +66,13 @@ const store = create<State & Actions>()(
           try {
             const { error } = await supabase
               .from('orders')
-              .update({
-                status: order.status,
-                payment_method: order.payment_method,
-                updated_at: new Date().toISOString()
-              })
+              .update(order)
               .eq('order_id', order.order_id);
 
             if (error) throw error;
 
             set((state) => ({
-              orders: state.orders.map(o => 
+              orders: state.orders.map((o) => 
                 o.order_id === order.order_id ? order : o
               )
             }));
@@ -217,18 +167,16 @@ const store = create<State & Actions>()(
             const { data, error } = await supabase
               .from('menu_items')
               .select('*')
-              .order('category', { ascending: true });
+              .order('name');
 
-            if (error) {
-              console.error('Error fetching menu items:', error);
-              throw error;
-            }
+            if (error) throw error;
 
-            set({ menuItems: data || [], loading: false });
+            set({ menuItems: data || [] });
           } catch (err) {
-            console.error('Error in fetchMenuItems:', err);
-            set({ loading: false });
+            console.error('Error fetching menu items:', err);
             throw err;
+          } finally {
+            set({ loading: false });
           }
         },
 
@@ -237,33 +185,17 @@ const store = create<State & Actions>()(
           try {
             const { data, error } = await supabase
               .from('orders')
-              .select(`
-                *,
-                items:order_items(
-                  *,
-                  menu_item:menu_items(*)
-                ),
-                created_by:users!created_by(username)
-              `)
+              .select('*')
               .order('created_at', { ascending: false });
 
             if (error) throw error;
-            console.log('Fetched Orders:', data);
 
-            set({ 
-              orders: data?.map(order => ({
-                ...order,
-                items: order.items.map((item: any) => ({
-                  ...item,
-                  name: item.menu_item.name
-                }))
-              })) || [],
-              loading: false 
-            });
+            set({ orders: data || [] });
           } catch (err) {
             console.error('Error fetching orders:', err);
-            set({ loading: false });
             throw err;
+          } finally {
+            set({ loading: false });
           }
         },
 

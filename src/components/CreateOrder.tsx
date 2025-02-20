@@ -113,6 +113,11 @@ export function CreateOrder() {
     return acc;
   }, {} as Record<string, MenuItem[]>);
 
+  const items = Object.entries(groupedItems).map(([category, items]) => ({
+    category,
+    items: items as MenuItem[]
+  }));
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
