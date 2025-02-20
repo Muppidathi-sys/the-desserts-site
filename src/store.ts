@@ -3,7 +3,9 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { devtools } from 'zustand/middleware';
 import { supabase } from './lib/supabase';
 import { User, Order, MenuItem } from './types';
-import { useStore } from './store';
+
+// Create a separate type for the store
+type Store = State & Actions;
 
 interface State {
   users: User[];
@@ -14,34 +16,52 @@ interface State {
 }
 
 interface Actions {
-  setOrders: (orders: Order[]) => void;
-  addOrder: (order: Order) => Promise<void>;
-  updateOrder: (order: Order) => Promise<void>;
-  setMenuItems: (items: MenuItem[]) => void;
-  addUser: (user: User) => Promise<void>;
   setUser: (user: User | null) => void;
-  fetchUsers: () => Promise<void>;
+  setOrders: (orders: Order[]) => void;
+  setMenuItems: (items: MenuItem[]) => void;
+  addOrder: (order: Partial<Order>) => Promise<void>;
+  updateOrder: (order: Order) => Promise<void>;
   fetchOrders: () => Promise<void>;
   fetchMenuItems: () => Promise<void>;
-  clearOrders: () => Promise<void>;
-  clearAllData: () => Promise<void>;
-  fetchAllData: () => Promise<void>;
+  resetOrders: () => Promise<void>;
   resetMenuItems: () => Promise<void>;
+  addUser: (user: User) => Promise<void>;
+  checkMenuItems: () => Promise<MenuItem[] | undefined>;
 }
 
-const store = create<State & Actions>()(
+// Create the store
+const store = create<Store>()(
   devtools(
     persist(
       (set) => ({
+        // Initial state
         users: [],
         user: null,
         orders: [],
         menuItems: [],
         loading: false,
 
+        // Actions
+        setUser: (user) => set({ user }),
         setOrders: (orders) => set({ orders }),
         setMenuItems: (menuItems) => set({ menuItems }),
-        setUser: (user) => set({ user }),
+        addUser: async (user) => {
+          set((state) => ({ users: [...state.users, user] }));
+        },
+
+        checkMenuItems: async () => {
+          const { data, error } = await supabase
+            .from('menu_items')
+            .select('*')
+            .order('category', { ascending: true });
+
+          if (error) {
+            console.error('Error fetching menu items:', error);
+            return undefined;
+          }
+
+          return data;
+        },
 
         addOrder: async (order) => {
           try {
@@ -54,7 +74,7 @@ const store = create<State & Actions>()(
             if (error) throw error;
 
             set((state) => ({
-              orders: [...state.orders, data]
+              orders: [...state.orders, data as Order]
             }));
           } catch (err) {
             console.error('Error adding order:', err);
@@ -82,82 +102,22 @@ const store = create<State & Actions>()(
           }
         },
 
-        fetchAllData: async () => {
-          set({ loading: true });
-          try {
-            // Fetch users
-            const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('*')
-              .order('created_at', { ascending: false });
-
-            if (userError) throw userError;
-
-            // Fetch menu items
-            const { data: menuData, error: menuError } = await supabase
-              .from('menu_items')
-              .select('*')
-              .order('category', { ascending: true });
-
-            if (menuError) throw menuError;
-
-            // Fetch orders with related data
-            const { data: orderData, error: orderError } = await supabase
-              .from('orders')
-              .select(`
-                *,
-                items:order_items(
-                  *,
-                  menu_item:menu_items(*)
-                ),
-                created_by:users!created_by(username)
-              `)
-              .order('created_at', { ascending: false });
-
-            if (orderError) throw orderError;
-
-            // Update store with all fetched data
-            set({
-              users: userData || [],
-              menuItems: menuData || [],
-              orders: orderData?.map(order => ({
-                ...order,
-                items: order.items.map((item: any) => ({
-                  ...item,
-                  name: item.menu_item.name
-                }))
-              })) || [],
-              loading: false
-            });
-
-            console.log('Fetched Data:', {
-              users: userData,
-              menuItems: menuData,
-              orders: orderData
-            });
-
-          } catch (err) {
-            console.error('Error fetching all data:', err);
-            set({ loading: false });
-            throw err;
-          }
-        },
-
-        fetchUsers: async () => {
+        fetchOrders: async () => {
           set({ loading: true });
           try {
             const { data, error } = await supabase
-              .from('users')
+              .from('orders')
               .select('*')
               .order('created_at', { ascending: false });
 
             if (error) throw error;
-            console.log('Fetched Users:', data);
-            set({ users: data || [], loading: false });
+
+            set({ orders: data || [] });
           } catch (err) {
-            console.error('Error fetching users:', err);
-            set({ loading: false });
+            console.error('Error fetching orders:', err);
             throw err;
+          } finally {
+            set({ loading: false });
           }
         },
 
@@ -180,26 +140,7 @@ const store = create<State & Actions>()(
           }
         },
 
-        fetchOrders: async () => {
-          set({ loading: true });
-          try {
-            const { data, error } = await supabase
-              .from('orders')
-              .select('*')
-              .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
-            set({ orders: data || [] });
-          } catch (err) {
-            console.error('Error fetching orders:', err);
-            throw err;
-          } finally {
-            set({ loading: false });
-          }
-        },
-
-        clearOrders: async () => {
+        resetOrders: async () => {
           try {
             set({ loading: true });
             
@@ -208,45 +149,10 @@ const store = create<State & Actions>()(
             
             set({ orders: [], loading: false });
           } catch (err) {
-            console.error('Error clearing orders:', err);
+            console.error('Error resetting orders:', err);
             set({ loading: false });
             throw err;
           }
-        },
-
-        clearAllData: async () => {
-          try {
-            set({ loading: true });
-            
-            await supabase.from('order_items').delete().neq('order_item_id', '');
-            await supabase.from('orders').delete().neq('order_id', '');
-            await supabase.from('menu_items').delete().neq('item_id', '');
-            
-            set({ 
-              orders: [],
-              menuItems: [],
-              loading: false 
-            });
-          } catch (err) {
-            console.error('Error clearing all data:', err);
-            set({ loading: false });
-            throw err;
-          }
-        },
-
-        checkMenuItems: async () => {
-          const { data, error } = await supabase
-            .from('menu_items')
-            .select('*')
-            .order('category', { ascending: true });
-
-          if (error) {
-            console.error('Error fetching menu items:', error);
-            return;
-          }
-
-          console.log('Menu Items:', data);
-          return data;
         },
 
         resetMenuItems: async () => {
@@ -406,12 +312,19 @@ const store = create<State & Actions>()(
         storage: createJSONStorage(() => sessionStorage),
         partialize: (state) => ({ user: state.user }),
         version: 1,
+        migrate: (persistedState: any) => {
+          return {
+            ...persistedState,
+            version: 1
+          }
+        },
       }
     )
   )
 );
 
+// Export the store
 export const useStore = store;
 
-// Call this function to verify
-useStore.getState().checkMenuItems(); 
+// Remove or comment out this line since we don't need to check menu items on store creation
+// useStore.getState().checkMenuItems(); 

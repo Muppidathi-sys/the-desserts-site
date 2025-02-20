@@ -43,7 +43,7 @@ export function Reports() {
   }, {});
 
   const topItems = Object.entries(popularItems)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([, a], [, b]) => (Number(b) || 0) - (Number(a) || 0))
     .slice(0, 5);
 
   // Add proper type for the sorting

@@ -113,7 +113,7 @@ export function CreateOrder() {
     return acc;
   }, {} as Record<string, MenuItem[]>);
 
-  const items = Object.entries(groupedItems).map(([category, items]) => ({
+  const items = Object.entries(groupedItems).map(([category, items]: [string, MenuItem[]]) => ({
     category,
     items: items as MenuItem[]
   }));
@@ -162,7 +162,7 @@ export function CreateOrder() {
 
       {/* Menu Categories */}
       <div className="space-y-8 pb-48">
-        {Object.entries(groupedItems).map(([category, items]) => (
+        {Object.entries(groupedItems).map(([category, items]: [string, MenuItem[]]) => (
           <div key={category}>
             <h2 className="text-lg font-medium text-secondary mb-4 capitalize">
               {category.replace('_', ' ')}
