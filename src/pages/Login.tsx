@@ -18,35 +18,28 @@ export function Login() {
     setError('');
 
     try {
-      // First sign in with Supabase Auth
+      // First check if user exists in our users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .single();
+
+      if (userError || !userData) {
+        throw new Error('Invalid username or password');
+      }
+
+      // Then sign in with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: username,
+        email: `${username}@example.com`, // Use a consistent email format
         password: password
       });
 
       if (authError) throw authError;
 
-      if (authData.user) {
-        // Then fetch user details from our users table
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('auth_id', authData.user.id)
-          .single();
-
-        if (userError) {
-          console.error('User data fetch error:', userError);
-          throw userError;
-        }
-
-        if (!userData) {
-          throw new Error('User not found in database');
-        }
-
-        console.log('Logged in user:', userData);
-        setUser(userData);
-        navigate('/');
-      }
+      console.log('Logged in user:', userData);
+      setUser(userData);
+      navigate('/');
     } catch (err) {
       console.error('Login error:', err);
       setError('Invalid username or password');

@@ -1,268 +1,225 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
-import { MenuItem, OrderItem } from '../types';
-import { formatPrice } from '../utils/format';
+import { MenuItem } from '../types';
 import { BsSearch, BsPlus } from 'react-icons/bs';
-import { FaShoppingCart } from 'react-icons/fa';
 import { IoRemove } from 'react-icons/io5';
+import { showToast } from '../utils/toast';
 
-interface OrderItemInput extends OrderItem {
+interface SelectedItem {
+  id: string;
   name: string;
+  price: number;
+  quantity: number;
 }
 
 export function CreateOrder() {
   const navigate = useNavigate();
   const { menuItems, loading, fetchMenuItems, addOrder } = useStore();
-  const [selectedItems, setSelectedItems] = useState<{id: string, quantity: number}[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('');
 
   useEffect(() => {
-    // Only fetch if menuItems is empty
-    if (menuItems.length === 0) {
-      fetchMenuItems();
-    }
-  }, []); // Empty dependency array means this runs once on mount
+    fetchMenuItems();
+  }, []);
 
   const addItemToOrder = (menuItem: MenuItem) => {
-    const existingItem = selectedItems.find(item => item.id === menuItem.item_id);
-    
-    if (existingItem) {
-      setSelectedItems(selectedItems.map(item => 
-        item.id === menuItem.item_id
-          ? {
-              ...item,
-              quantity: item.quantity + 1
-            }
-          : item
-      ));
-    } else {
-      const newItem: {id: string, quantity: number} = {
+    console.log('Adding item:', menuItem); // Debug log
+
+    setSelectedItems(prev => {
+      const existingItem = prev.find(item => item.id === menuItem.item_id);
+      
+      if (existingItem) {
+        return prev.map(item => 
+          item.id === menuItem.item_id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+
+      return [...prev, {
         id: menuItem.item_id,
+        name: menuItem.name,
+        price: menuItem.price,
         quantity: 1
-      };
-      setSelectedItems([...selectedItems, newItem]);
-    }
+      }];
+    });
   };
 
-  const removeItemFromOrder = (itemId: string) => {
-    setSelectedItems(selectedItems.filter(item => item.id !== itemId));
-  };
-
-  const updateQuantity = (itemId: string, quantity: number) => {
-    if (quantity < 1) return;
-    
-    setSelectedItems(selectedItems.map(item =>
-      item.id === itemId
-        ? {
-            ...item,
-            quantity
-          }
-        : item
-    ));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const { user } = useStore.getState();
-    
-    if (!user) {
-      console.error('No user found');
+  const updateQuantity = (itemId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      setSelectedItems(prev => prev.filter(item => item.id !== itemId));
       return;
     }
 
-    const totalAmount = selectedItems.reduce((sum, item) => {
-      const menuItem = menuItems.find(m => m.item_id === item.id);
-      return sum + (item.quantity * (menuItem?.price || 0));
-    }, 0);
+    setSelectedItems(prev =>
+      prev.map(item =>
+        item.id === itemId ? { ...item, quantity: newQuantity } : item
+      )
+    );
+  };
 
-    const newOrder = {
-      order_number: `${Date.now().toString().slice(-4)}`,
-      status: 'new',
-      total_amount: totalAmount,
-      notes: '',
-      created_by: user.user_id, // Use the actual user UUID
-      items: selectedItems.map(item => {
-        const menuItem = menuItems.find(m => m.item_id === item.id);
-        return {
+  const handleSubmit = async () => {
+    try {
+      const { user } = useStore.getState();
+      
+      if (!user) {
+        showToast.loginRequired();
+        return;
+      }
+
+      const newOrder = {
+        order_number: `${Date.now().toString().slice(-4)}`,
+        status: 'new' as const,
+        total_amount: selectedItems.reduce((sum, item) => 
+          sum + (item.quantity * item.price), 0
+        ),
+        created_by: user.user_id,
+        items: selectedItems.map(item => ({
           item_id: item.id,
-          name: menuItem?.name || '',
+          name: item.name,
           quantity: item.quantity,
-          item_price: menuItem?.price || 0,
-          subtotal: item.quantity * (menuItem?.price || 0),
-          special_instructions: ''
-        };
-      })
-    };
+          item_price: item.price,
+          subtotal: item.quantity * item.price
+        }))
+      };
 
-    addOrder(newOrder);
-    setSelectedItems([]);
-    setSearchQuery('');
+      await addOrder(newOrder);
+      showToast.orderSuccess();
+      navigate('/');
+    } catch (error) {
+      console.error('Failed to place order:', error);
+      showToast.orderError();
+    }
   };
 
   const filteredItems = menuItems.filter(item =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const groupedItems = filteredItems.reduce((acc, item) => {
-    if (!acc[item.category]) {
-      acc[item.category] = [];
-    }
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<string, MenuItem[]>);
-
-  const items = Object.entries(groupedItems).map(([category, items]: [string, MenuItem[]]) => ({
-    category,
-    items: items as MenuItem[]
-  }));
+  const calculateTotal = () => {
+    return selectedItems.reduce((total, item) => 
+      total + (item.quantity * item.price), 0
+    );
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <span className="material-icons animate-spin text-primary text-4xl">
-          refresh
-        </span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 text-red-600">
-        <p>Error: {error}</p>
-        <button 
-          onClick={fetchMenuItems}
-          className="mt-2 text-primary hover:text-primary-dark"
-        >
-          Try Again
-        </button>
+      <div className="flex items-center justify-center h-64">
+        <span className="material-icons animate-spin text-primary text-4xl">refresh</span>
       </div>
     );
   }
 
   return (
-    <form id="create-order-form" onSubmit={handleSubmit} className="space-y-6">
-      {/* Search Bar */}
-      <div className="bg-white rounded-lg">
-        <div className="px-4 py-3">
+    <div className="max-w-4xl mx-auto pb-20 lg:pb-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Menu Section */}
+        <div className="space-y-4">
+          {/* Search */}
           <div className="relative">
-            <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-light text-lg" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search waffles..."
-              className="w-full bg-gray-50 rounded-lg pl-10 pr-4 py-2 text-secondary placeholder:text-secondary-light focus:outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="Search menu items..."
+              className="w-full px-4 py-2 pl-10 bg-white rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
+            <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-light" />
+          </div>
+
+          {/* Menu Items */}
+          <div className="bg-white rounded-lg p-4 space-y-4">
+            {filteredItems.map(item => (
+              <div 
+                key={item.item_id}
+                className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <div>
+                  <h3 className="text-[14px] font-medium text-secondary">
+                    {item.name}
+                  </h3>
+                  <p className="text-[12px] text-secondary-light">
+                    ₹{item.price}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => addItemToOrder(item)}
+                  className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors"
+                >
+                  <BsPlus className="text-xl" />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* Menu Categories */}
-      <div className="space-y-8 pb-48">
-        {Object.entries(groupedItems).map(([category, items]: [string, MenuItem[]]) => (
-          <div key={category}>
-            <h2 className="text-lg font-medium text-secondary mb-4 capitalize">
-              {category.replace('_', ' ')}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {items.map((item) => (
-                <div
-                  key={item.item_id}
-                  className="bg-white rounded-xl shadow-card p-4"
-                >
-                  <h3 className="text-secondary font-medium">{item.name}</h3>
-                  <p className="text-secondary-light text-sm mt-1">
-                    {item.description}
-                  </p>
-                  <div className="flex justify-between items-center mt-4">
-                    <span className="text-primary font-medium">
-                      ₹{item.price}
+        {/* Order Summary - Fixed for both desktop and mobile */}
+        <div className="fixed bottom-16 inset-x-0 bg-white border-t border-gray-100 lg:relative lg:bottom-0 lg:border-0">
+          <div className="p-4 lg:bg-white lg:rounded-xl">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-[16px] font-medium text-secondary">Selected Items</h2>
+              <span className="text-[14px] text-secondary-light">{selectedItems.length} items</span>
+            </div>
+
+            {/* Selected Items */}
+            <div className="max-h-48 overflow-y-auto mb-4">
+              {selectedItems.map(item => (
+                <div key={item.id} className="flex items-center justify-between py-2">
+                  <div className="flex-1">
+                    <p className="text-[14px] text-secondary">{item.name}</p>
+                    <p className="text-[12px] text-secondary-light">₹{item.price} × {item.quantity}</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      className="text-primary text-xl"
+                    >
+                      -
+                    </button>
+                    <span className="text-[14px] font-medium w-4 text-center">
+                      {item.quantity}
                     </span>
                     <button
                       type="button"
-                      onClick={() => addItemToOrder(item)}
-                      className="w-10 h-10 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center"
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      className="text-primary text-xl"
                     >
-                      <BsPlus className="text-2xl" />
+                      +
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Fixed Bottom Section */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100">
-        {/* Selected Items Section */}
-        {selectedItems.length > 0 && (
-          <div className="max-h-48 overflow-y-auto px-4 py-3 border-b border-gray-100">
-            <div className="space-y-3">
-              {selectedItems.map(selectedItem => {
-                const item = menuItems.find(m => m.item_id === selectedItem.id);
-                if (!item) return null;
-                return (
-                  <div key={item.item_id} className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-secondary font-medium">{item.name}</h3>
-                      <p className="text-primary text-sm font-medium">
-                        {formatPrice(item.price)} × {selectedItem.quantity}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-secondary-light hover:bg-gray-100"
-                        onClick={() => removeItemFromOrder(item.item_id)}
-                      >
-                        <IoRemove className="text-sm" />
-                      </button>
-                      <span className="w-8 text-center text-secondary font-medium">
-                        {selectedItem.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-secondary-light hover:bg-gray-100"
-                        onClick={() => addItemToOrder(item)}
-                      >
-                        <BsPlus className="text-2xl" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+            {/* Total Section */}
+            <div className="space-y-3 border-t pt-3">
+              <div className="flex justify-between items-center text-[14px]">
+                <span className="text-secondary-light">Subtotal ({selectedItems.length} items)</span>
+                <span className="text-secondary">₹{calculateTotal()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[16px] font-medium text-secondary">Total Amount</span>
+                <span className="text-[16px] font-semibold text-primary">₹{calculateTotal()}</span>
+              </div>
             </div>
-          </div>
-        )}
 
-        {/* Total and Place Order */}
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <span className="text-secondary-light">Total Items</span>
-              <span className="text-secondary ml-2">
-                {selectedItems.reduce((sum, item) => sum + item.quantity, 0)}
-              </span>
-            </div>
-            <span className="text-xl font-semibold text-primary">
-              {formatPrice(selectedItems.reduce((total, item) => {
-                const menuItem = menuItems.find(m => m.item_id === item.id);
-                return total + (menuItem?.price || 0) * item.quantity;
-              }, 0))}
-            </span>
+            {/* Place Order Button */}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={selectedItems.length === 0}
+              className="w-full bg-primary text-white py-3 rounded-lg text-[14px] font-medium mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Place Order ({selectedItems.length})
+            </button>
           </div>
-          <button
-            type="submit"
-            className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary-dark transition-colors"
-          >
-            Place Order
-          </button>
         </div>
       </div>
-    </form>
+    </div>
   );
 } 

@@ -10,6 +10,7 @@ import { Profile } from './pages/Profile';
 import { CreateOrderPage } from './pages/CreateOrderPage';
 import { Users } from './pages/Users';
 import { Debug } from './pages/Debug';
+import { Toaster } from 'react-hot-toast';
 
 // Create a separate component for routes that uses useLocation
 function AppRoutes() {
@@ -37,46 +38,64 @@ function AppRoutes() {
   }, [location]);
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route element={<Layout />}>
-        <Route path="/" element={
-          <PrivateRoute>
-            <Orders />
-          </PrivateRoute>
-        } />
-        <Route path="/new-order" element={
-          <PrivateRoute>
-            <CreateOrderPage />
-          </PrivateRoute>
-        } />
-        <Route path="/history" element={
-          <PrivateRoute>
-            <History />
-          </PrivateRoute>
-        } />
-        <Route path="/reports" element={
-          <PrivateRoute>
-            <Reports />
-          </PrivateRoute>
-        } />
-        <Route path="/profile" element={
-          <PrivateRoute>
-            <Profile />
-          </PrivateRoute>
-        } />
-        <Route path="/users" element={
-          <PrivateRoute>
-            <Users />
-          </PrivateRoute>
-        } />
-        <Route path="/debug" element={
-          <PrivateRoute>
-            <Debug />
-          </PrivateRoute>
-        } />
-      </Route>
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route element={<Layout />}>
+          <Route path="/" element={
+            <PrivateRoute>
+              <Orders />
+            </PrivateRoute>
+          } />
+          <Route path="/new-order" element={
+            <PrivateRoute>
+              <CreateOrderPage />
+            </PrivateRoute>
+          } />
+          <Route path="/history" element={
+            <PrivateRoute>
+              <History />
+            </PrivateRoute>
+          } />
+          <Route path="/reports" element={
+            <PrivateRoute>
+              <Reports />
+            </PrivateRoute>
+          } />
+          <Route path="/profile" element={
+            <PrivateRoute>
+              <Profile />
+            </PrivateRoute>
+          } />
+          <Route path="/users" element={
+            <PrivateRoute>
+              <Users />
+            </PrivateRoute>
+          } />
+          <Route path="/debug" element={
+            <PrivateRoute>
+              <Debug />
+            </PrivateRoute>
+          } />
+        </Route>
+      </Routes>
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+          success: {
+            iconTheme: {
+              primary: '#22c55e',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+    </>
   );
 }
 

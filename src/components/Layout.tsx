@@ -1,32 +1,19 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
-import { Logo } from './Logo';
+import { useRealtimeOrders } from '../hooks/useRealtimeOrders';
 
 export function Layout() {
-  const location = useLocation();
-  const isNewOrderPage = location.pathname === '/new-order';
+  // Enable real-time updates
+  useRealtimeOrders();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {!isNewOrderPage && (
-        <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-100 z-10">
-          <div className="px-6 py-4">
-            <div className="flex justify-between items-center">
-              <Logo />
-            </div>
-          </div>
-        </header>
-      )}
-      
-      <main className={`${!isNewOrderPage ? 'pt-20' : ''} pb-24`}>
-        <div className="px-6 max-w-7xl mx-auto">
-          <Outlet />
-        </div>
+      <Sidebar />
+      <MobileNav />
+      <main className="pt-16 pb-20 px-4 lg:pl-80 lg:p-8">
+        <Outlet />
       </main>
-
-      {!isNewOrderPage && (
-        <MobileNav />
-      )}
     </div>
   );
 } 

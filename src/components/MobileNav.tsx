@@ -4,6 +4,7 @@ import { FaHome } from 'react-icons/fa';
 import { BiHistory } from 'react-icons/bi';
 import { IoStatsChart } from 'react-icons/io5';
 import { CgProfile } from 'react-icons/cg';
+import { Logo } from './Logo';
 
 export function MobileNav() {
   const location = useLocation();
@@ -11,21 +12,15 @@ export function MobileNav() {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'manager':
-        return 'bg-purple-100 text-purple-800';
-      case 'kitchen':
-        return 'bg-green-100 text-green-800';
-      case 'operator':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   return (
     <>
+      {/* Mobile Header */}
+      <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-100 lg:hidden z-10">
+        <div className="px-4 py-3">
+          <Logo />
+        </div>
+      </header>
+
       {/* Floating Action Button */}
       {location.pathname === '/' && (
         <Link
@@ -53,7 +48,6 @@ export function MobileNav() {
 
 function NavLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
   const location = useLocation();
-
   const isActive = (path: string) => location.pathname === path;
 
   return (

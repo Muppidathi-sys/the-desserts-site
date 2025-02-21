@@ -1,21 +1,22 @@
 export interface OrderItem {
   order_item_id: string;
   order_id: string;
-  item_id: string;
+  name: string;
   quantity: number;
-  item_price: number; // In INR
-  subtotal: number; // In INR
+  item_price: number;
+  subtotal: number;
   special_instructions?: string;
-  name?: string; // Added after joining with menu_items
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Order {
   order_id: string;
   order_number: string;
-  status: 'new' | 'in_progress' | 'completed';
+  status: 'new' | 'processing' | 'completed' | 'cancelled';
   total_amount: number;
-  notes?: string;
   payment_method?: 'cash' | 'gpay';
+  notes?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -36,7 +37,9 @@ export interface User {
   user_id: string;
   auth_id?: string;
   username: string;
+  email?: string;
   role: 'manager' | 'operator' | 'kitchen';
   phone?: string;
+  avatar_url?: string;
   created_at: string;
 } 

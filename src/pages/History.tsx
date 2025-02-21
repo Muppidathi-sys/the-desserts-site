@@ -1,107 +1,172 @@
+import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { formatPrice } from '../utils/format';
 import { Order } from '../types';
+import { BsSearch } from 'react-icons/bs';
+
+type FilterStatus = 'all' | 'completed' | 'cancelled';
+type FilterPayment = 'all' | 'cash' | 'gpay';
 
 export function History() {
-  const { orders } = useStore();
-  const completedOrders = orders.filter(order => order.status === 'completed');
+  const { orders, loading, fetchOrders } = useStore();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
+  const [paymentFilter, setPaymentFilter] = useState<FilterPayment>('all');
 
-  // Group orders by date
-  const groupedOrders = completedOrders.reduce((groups: Record<string, Order[]>, order) => {
-    const date = new Date(order.created_at).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(order);
-    return groups;
-  }, {});
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
-  // Sort dates in descending order
-  const sortedDates = Object.keys(groupedOrders).sort((a, b) => 
-    new Date(b).getTime() - new Date(a).getTime()
-  );
+  // Filter and search orders - only completed and cancelled orders
+  const filteredOrders = orders
+    .filter(order => {
+      // Only show completed and cancelled orders
+      if (!['completed', 'cancelled'].includes(order.status)) return false;
 
-  if (sortedDates.length === 0) {
-    return (
-      <div className="bg-white rounded-xl shadow-card p-8 text-center">
-        <span className="material-icons text-4xl text-secondary-light mb-3">
-          history
-        </span>
-        <h3 className="text-lg font-medium text-secondary mb-1">
-          No Order History
-        </h3>
-        <p className="text-secondary-light">
-          Your completed orders will appear here
-        </p>
-      </div>
-    );
-  }
+      // Status filter
+      if (statusFilter !== 'all' && order.status !== statusFilter) return false;
+      
+      // Payment method filter (only for completed orders)
+      if (paymentFilter !== 'all' && order.status === 'completed' && order.payment_method !== paymentFilter) return false;
+      
+      // Search query
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        return (
+          order.order_number.toLowerCase().includes(searchLower) ||
+          order.items.some(item => item.name.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      return true;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
-    <div className="space-y-8">
-      {sortedDates.map(date => (
-        <div key={date}>
-          <div className="flex items-center gap-4 mb-4">
-            <h2 className="text-lg font-medium text-secondary">{date}</h2>
-            <div className="h-px flex-1 bg-gray-100" />
-            <span className="text-secondary-light text-sm">
-              {groupedOrders[date].length} orders
-            </span>
+    <div className="space-y-3">
+      {/* Search and Filters */}
+      <div className="bg-white rounded-xl p-3 space-y-2">
+        {/* Search */}
+        <div className="relative">
+          <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-light text-[14px]" />
+          <input
+            type="text"
+            placeholder="Search order number or items..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-[14px] rounded-lg bg-gray-50 text-secondary placeholder:text-secondary-light focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        {/* Filters */}
+        <div className="flex gap-2">
+          {/* Status Filter */}
+          <div className="flex-1">
+            <label className="block text-[12px] text-secondary-light mb-1">
+              Status
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as FilterStatus)}
+              className="w-full px-2 py-1.5 text-[14px] rounded-lg bg-gray-50 text-secondary border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="all">All Orders</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
           </div>
 
-          <div className="grid gap-4">
-            {groupedOrders[date].map(order => (
-              <div 
-                key={order.order_id}
-                className="bg-white rounded-xl shadow-card p-6"
+          {/* Payment Filter */}
+          {(statusFilter === 'all' || statusFilter === 'completed') && (
+            <div className="flex-1">
+              <label className="block text-[12px] text-secondary-light mb-1">
+                Payment Method
+              </label>
+              <select
+                value={paymentFilter}
+                onChange={(e) => setPaymentFilter(e.target.value as FilterPayment)}
+                className="w-full px-2 py-1.5 text-[14px] rounded-lg bg-gray-50 text-secondary border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
-                {/* Order Header */}
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-semibold text-secondary">
-                      Order #{order.order_number}
-                    </h3>
-                    <span className="text-sm text-secondary-light">
-                      {new Date(order.created_at).toLocaleTimeString()}
+                <option value="all">All Payments</option>
+                <option value="cash">Cash</option>
+                <option value="gpay">GPay</option>
+              </select>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Orders List */}
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <span className="material-icons animate-spin text-primary text-2xl">
+            refresh
+          </span>
+        </div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="bg-white rounded-xl p-6 text-center">
+          <span className="material-icons text-2xl text-secondary-light mb-2">
+            receipt_long
+          </span>
+          <p className="text-sm text-secondary-light">No orders found</p>
+        </div>
+      ) : (
+        <div className="grid gap-2 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {filteredOrders.map(order => (
+            <div key={order.order_id} className="bg-white rounded-lg shadow-sm">
+              {/* Order Header */}
+              <div className="p-3 border-b border-gray-50">
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <span className="text-[14px] font-medium text-secondary">
+                      #{order.order_number}
                     </span>
-                  </div>
-                  <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-secondary-light">
-                    Completed
-                  </span>
-                </div>
-
-                {/* Order Items */}
-                <div className="space-y-2">
-                  {order.items.map(item => (
-                    <div key={item.order_item_id} className="flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <span className="text-primary font-medium">{item.quantity}×</span>
-                        <span className="text-secondary">{item.name}</span>
-                      </div>
-                      <span className="text-secondary-light">
-                        {formatPrice(item.subtotal)}
-                      </span>
+                    <div className="text-[12px] text-secondary-light mt-0.5">
+                      {new Date(order.created_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </div>
-                  ))}
-                </div>
-
-                {/* Total */}
-                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                  <span className="text-secondary-light">Total Amount</span>
-                  <span className="text-lg font-semibold text-secondary">
-                    {formatPrice(order.total_amount)}
+                  </div>
+                  <span className={`px-2 py-0.5 text-[12px] rounded-full ${
+                    order.status === 'completed' 
+                      ? 'bg-success/10 text-success'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                   </span>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {/* Order Items */}
+              <div className="p-3 space-y-1.5">
+                {order.items?.map(item => (
+                  <div key={item.item_id} className="flex justify-between text-[14px]">
+                    <div className="text-secondary truncate pr-2">
+                      {item.name} <span className="text-secondary-light">×{item.quantity}</span>
+                    </div>
+                    <span className="text-secondary whitespace-nowrap">
+                      {formatPrice(item.subtotal)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Order Footer */}
+              <div className="px-3 py-2 bg-gray-50 rounded-b-lg flex justify-between items-center">
+                <span className="text-[12px] font-medium text-secondary-light">
+                  {order.payment_method?.toUpperCase() || 'Not Paid'}
+                </span>
+                <span className="text-[14px] font-medium text-primary">
+                  {formatPrice(order.total_amount)}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 } 
