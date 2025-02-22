@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
-import type { MenuItem, Order } from '../types';
+import type { MenuItem } from '../types';
 import { BsSearch, BsPlus } from 'react-icons/bs';
 import { showToast } from '../utils/toast';
 
@@ -18,9 +18,36 @@ export function CreateOrder() {
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Fetch menu items on mount
   useEffect(() => {
+    console.log('Fetching menu items...'); // Debug log
     fetchMenuItems();
-  }, []);
+  }, [fetchMenuItems]);
+
+  // Debug log for menuItems
+  useEffect(() => {
+    console.log('Menu items updated:', menuItems);
+  }, [menuItems]);
+
+  // Group menu items by category
+  const groupedMenuItems = menuItems.reduce((acc, item) => {
+    const category = item.category;
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(item);
+    return acc;
+  }, {} as Record<string, MenuItem[]>);
+
+  // Filter menu items based on search
+  const filteredItems = searchQuery 
+    ? menuItems.filter(item =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : Object.entries(groupedMenuItems).map(([category, items]) => ({
+        category,
+        items
+      }));
 
   const addItemToOrder = (menuItem: MenuItem) => {
     console.log('Adding item:', menuItem); // Debug log
@@ -93,10 +120,6 @@ export function CreateOrder() {
     }
   };
 
-  const filteredItems = menuItems.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const calculateTotal = () => {
     return selectedItems.reduce((total, item) => 
       total + (item.quantity * item.price), 0
@@ -130,28 +153,64 @@ export function CreateOrder() {
 
           {/* Menu Items */}
           <div className="bg-white rounded-lg p-4 space-y-4">
-            {filteredItems.map(item => (
-              <div 
-                key={item.item_id}
-                className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                <div>
-                  <h3 className="text-[14px] font-medium text-secondary">
-                    {item.name}
-                  </h3>
-                  <p className="text-[12px] text-secondary-light">
-                    ₹{item.price}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => addItemToOrder(item)}
-                  className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors"
+            {searchQuery ? (
+              // Show search results
+              filteredItems.map(item => (
+                <div 
+                  key={item.item_id}
+                  className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg transition-colors"
                 >
-                  <BsPlus className="text-xl" />
-                </button>
-              </div>
-            ))}
+                  <div>
+                    <h3 className="text-[14px] font-medium text-secondary">
+                      {item.name}
+                    </h3>
+                    <p className="text-[12px] text-secondary-light">
+                      ₹{item.price} • {item.size}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => addItemToOrder(item)}
+                    className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors"
+                  >
+                    <BsPlus className="text-xl" />
+                  </button>
+                </div>
+              ))
+            ) : (
+              // Show categorized menu
+              Object.entries(groupedMenuItems).map(([category, items]) => (
+                <div key={category}>
+                  <h2 className="text-[16px] font-medium text-secondary mb-2 capitalize">
+                    {category.replace('_', ' ')}
+                  </h2>
+                  <div className="space-y-2">
+                    {items.map(item => (
+                      <div 
+                        key={item.item_id}
+                        className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                      >
+                        <div>
+                          <h3 className="text-[14px] font-medium text-secondary">
+                            {item.name}
+                          </h3>
+                          <p className="text-[12px] text-secondary-light">
+                            ₹{item.price} • {item.size}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => addItemToOrder(item)}
+                          className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors"
+                        >
+                          <BsPlus className="text-xl" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

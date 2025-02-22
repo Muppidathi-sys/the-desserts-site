@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { supabase } from '../lib/supabase';
@@ -7,8 +7,15 @@ import { showToast } from '../utils/toast';
 
 export function Login() {
   const navigate = useNavigate();
-  const { setUser } = useStore();
+  const { user, setUser } = useStore();
   const [loading, setLoading] = useState(false);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

@@ -9,10 +9,6 @@ export function Logo() {
     <div className="flex items-center gap-2">
       <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
         <GiCupcake className="text-white text-xl" />
-        {/* or */}
-        {/* <MdBakeryDining className="text-white text-xl" /> */}
-        {/* or */}
-        {/* <FaIceCream className="text-white text-xl" /> */}
       </div>
       <span className="text-xl font-bold text-secondary">
         The Desserts Site

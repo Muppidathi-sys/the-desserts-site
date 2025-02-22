@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { formatPrice } from '../utils/format';
+import { EmptyState } from '../components/EmptyState';
+import { BsBarChartLine } from 'react-icons/bs';
 
 type TimeFrame = 'today' | 'week' | 'month' | 'year';
 
@@ -58,7 +60,7 @@ export function Reports() {
   const popularItems = filteredOrders
     .filter(order => order.status === 'completed')
     .reduce((acc, order) => {
-      order.items.forEach(item => {
+      order.order_items.forEach(item => {
         if (!acc[item.name]) acc[item.name] = { quantity: 0, revenue: 0 };
         acc[item.name].quantity += item.quantity;
         acc[item.name].revenue += item.subtotal;
@@ -71,7 +73,7 @@ export function Reports() {
     .slice(0, 5);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       {/* Time Filter */}
       <div className="bg-white rounded-xl p-4">
         <div className="flex gap-2">

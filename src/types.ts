@@ -1,28 +1,31 @@
+export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled';
+export type PaymentMethod = 'cash' | 'gpay';
+
 export interface OrderItem {
-  order_item_id?: string;
-  order_id?: string;
+  order_item_id: string;
+  order_id: string;
   item_id: string;
   name: string;
   quantity: number;
-  item_price: number;
-  price?: number;
+  price: number;
   subtotal: number;
   special_instructions?: string;
   created_at?: string;
   updated_at?: string;
+  menu_item?: MenuItem;
 }
 
 export interface Order {
   order_id: string;
   order_number: string;
-  status: 'new' | 'processing' | 'completed' | 'cancelled';
+  status: OrderStatus;
   total_amount: number;
-  payment_method?: 'cash' | 'gpay';
+  payment_method?: PaymentMethod;
   notes?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
-  items: OrderItem[];
+  order_items: OrderItem[];
 }
 
 export interface MenuItem {
@@ -44,6 +47,4 @@ export interface User {
   phone?: string;
   avatar_url?: string;
   created_at: string;
-} 
-
-export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled';
+}

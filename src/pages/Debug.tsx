@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 
 export function Debug() {
-  const { users, menuItems, orders, loading, resetMenuItems, fetchMenuItems } = useStore();
+  const { users, menuItems, orders, loading, resetMenuItems, fetchMenuItems, initializeMenuItems } = useStore();
   const [error, setError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -32,6 +32,14 @@ export function Debug() {
       setError(err instanceof Error ? err.message : 'Failed to reset menu items');
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleInitializeMenu = async () => {
+    try {
+      await initializeMenuItems();
+    } catch (err) {
+      console.error('Failed to initialize menu:', err);
     }
   };
 
@@ -100,6 +108,13 @@ export function Debug() {
           {JSON.stringify(orders, null, 2)}
         </pre>
       </section>
+
+      <button 
+        onClick={handleInitializeMenu}
+        className="px-4 py-2 bg-yellow-500 text-white rounded"
+      >
+        Initialize Menu Items
+      </button>
     </div>
   );
 } 

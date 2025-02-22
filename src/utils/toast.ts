@@ -2,27 +2,11 @@ import toast from 'react-hot-toast';
 
 export const showToast = {
   success: (message: string) => {
-    toast.success(message, {
-      duration: 2000,
-      position: 'top-right',
-      style: {
-        background: '#333',
-        color: '#fff',
-        padding: '12px 16px',
-      },
-    });
+    toast.success(message);
   },
   
   error: (message: string) => {
-    toast.error(message, {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#333',
-        color: '#fff',
-        padding: '12px 16px',
-      },
-    });
+    toast.error(message);
   },
 
   // Standard messages
