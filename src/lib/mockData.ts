@@ -1,4 +1,4 @@
-import { User, MenuItem, Order } from '../types';
+import { User, Order } from '../types';
 
 export const mockUsers: User[] = [
   {
@@ -469,7 +469,7 @@ export const mockOrders: Order[] = [
     order_number: '003',
     created_at: '2024-02-20T11:30:00Z',
     updated_at: '2024-02-20T11:40:00Z',
-    status: 'in_progress',
+    status: 'processing',
     total_amount: 160,
     created_by: '1',
     items: [

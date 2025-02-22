@@ -1,5 +1,7 @@
 export type UserRole = 'operator' | 'kitchen' | 'manager';
 
+export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled';
+
 export type User = {
   user_id: string;
   username: string;
@@ -16,8 +18,6 @@ export type MenuItem = {
   available: boolean;
   image_url?: string;
 };
-
-export type OrderStatus = 'new' | 'in_progress' | 'ready' | 'completed';
 
 export type Order = {
   order_id: string;

@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
-import { MenuItem } from '../types';
+import type { MenuItem, Order } from '../types';
 import { BsSearch, BsPlus } from 'react-icons/bs';
-import { IoRemove } from 'react-icons/io5';
 import { showToast } from '../utils/toast';
 
 interface SelectedItem {
@@ -18,7 +17,6 @@ export function CreateOrder() {
   const { menuItems, loading, fetchMenuItems, addOrder } = useStore();
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('');
 
   useEffect(() => {
     fetchMenuItems();
@@ -69,9 +67,9 @@ export function CreateOrder() {
         return;
       }
 
-      const newOrder = {
+      const newOrder: Partial<Order> = {
         order_number: `${Date.now().toString().slice(-4)}`,
-        status: 'new' as const,
+        status: 'new',
         total_amount: selectedItems.reduce((sum, item) => 
           sum + (item.quantity * item.price), 0
         ),
@@ -81,6 +79,7 @@ export function CreateOrder() {
           name: item.name,
           quantity: item.quantity,
           item_price: item.price,
+          price: item.price,
           subtotal: item.quantity * item.price
         }))
       };

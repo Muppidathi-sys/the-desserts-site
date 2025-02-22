@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 
 export function Debug() {
-  const { users, menuItems, orders, loading, fetchAllData, resetMenuItems, fetchMenuItems } = useStore();
+  const { users, menuItems, orders, loading, resetMenuItems, fetchMenuItems } = useStore();
   const [error, setError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -12,7 +12,9 @@ export function Debug() {
 
   const loadData = async () => {
     try {
-      await fetchAllData();
+      await Promise.all([
+        fetchMenuItems()
+      ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     }

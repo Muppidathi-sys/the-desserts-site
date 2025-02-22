@@ -1,12 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { OrderActions } from '../components/OrderActions';
-import { formatPrice } from '../utils/format';
+// import { formatPrice } from '../utils/format';
 import { Order } from '../types';
 import { supabase } from '../lib/supabase';
-import { RealtimeChannel } from '@supabase/supabase-js';
-
-type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled';
+// import { RealtimeChannel } from '@supabase/supabase-js';
+import type { OrderStatus } from '../types';
 
 // Move getStatusColor outside components
 const getStatusColor = (status: string) => {
@@ -80,52 +79,46 @@ function OrderCard({ order }: { order: Order }) {
 export function Orders() {
   const { orders, loading, fetchOrders } = useStore();
   const [activeTab, setActiveTab] = useState<OrderStatus>('new');
-  const [error, setError] = useState<string | null>(null);
 
-  // Initial fetch
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
 
   // Set up real-time subscription
   useEffect(() => {
-    let channel: RealtimeChannel;
+    // Initial fetch
+    fetchOrders();
 
-    const setupRealtimeSubscription = async () => {
-      channel = supabase
-        .channel('orders-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'orders'
-          },
-          () => {
-            fetchOrders(); // Refresh orders on any change
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'order_items'
-          },
-          () => {
-            fetchOrders(); // Refresh orders when items change
-          }
-        )
-        .subscribe();
-    };
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('orders-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (insert, update, delete)
+          schema: 'public',
+          table: 'orders'
+        },
+        () => {
+          fetchOrders(); // Refresh orders on any change
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'order_items'
+        },
+        () => {
+          fetchOrders(); // Refresh when order items change
+        }
+      )
+      .subscribe();
 
-    setupRealtimeSubscription();
-
-    // Cleanup subscription
+    // Cleanup subscription on unmount
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      supabase.removeChannel(channel);
     };
   }, [fetchOrders]);
 
@@ -165,14 +158,6 @@ export function Orders() {
         <span className="material-icons animate-spin text-primary text-4xl">
           refresh
         </span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 text-red-600">
-        <p>Error: {error}</p>
       </div>
     );
   }

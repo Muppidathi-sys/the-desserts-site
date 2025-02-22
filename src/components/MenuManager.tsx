@@ -1,13 +1,58 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { MenuItem } from '../types';
+import type { MenuItem } from '../types';
 import { showToast } from '../utils/toast';
 import { FaEdit, FaTrash } from 'react-icons/fa';
+import { supabase } from '../lib/supabase';
 
 export function MenuManager() {
-  const { menuItems, addMenuItem, updateMenuItem, deleteMenuItem } = useStore();
+  const {
+    menuItems,
+    addMenuItem,
+    updateMenuItem,
+    deleteMenuItem,
+    user,
+    fetchMenuItems
+  } = useStore((state: any) => ({
+    menuItems: state.menuItems,
+    addMenuItem: state.addMenuItem,
+    updateMenuItem: state.updateMenuItem,
+    deleteMenuItem: state.deleteMenuItem,
+    user: state.user,
+    fetchMenuItems: state.fetchMenuItems
+  }));
+
+  // Fetch menu items only once on mount
+  useEffect(() => {
+    // Initial fetch
+    fetchMenuItems();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('menu-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'menu_items'
+        },
+        () => {
+          fetchMenuItems(); // Refresh on any change
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []); // Empty dependency array for mount/unmount only
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+
+  const canManageMenu = user?.role === 'manager';
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,16 +87,60 @@ export function MenuManager() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-[16px] font-medium text-secondary">Menu Items</h2>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="px-4 py-2 bg-primary text-white rounded-lg text-[14px]"
-        >
-          Add New Item
-        </button>
+        {canManageMenu && (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="px-4 py-2 bg-primary text-white rounded-lg text-[14px]"
+          >
+            Add New Item
+          </button>
+        )}
       </div>
 
-      {/* Add/Edit Form */}
-      {(showAddForm || editingItem) && (
+      {/* Menu Items List */}
+      <div className="bg-white rounded-xl">
+        <div className="grid gap-2 p-4">
+          {menuItems.map((item:any) => (
+            <div
+              key={item.item_id}
+              className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg"
+            >
+              <div>
+                <h3 className="text-[14px] font-medium text-secondary">{item.name}</h3>
+                <p className="text-[12px] text-secondary-light">₹{item.price}</p>
+              </div>
+              {canManageMenu && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditingItem(item)}
+                    className="p-2 text-primary hover:bg-primary/10 rounded-full"
+                  >
+                    <FaEdit />
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (confirm('Are you sure you want to delete this item?')) {
+                        try {
+                          await deleteMenuItem(item.item_id);
+                          showToast.success('Menu item deleted successfully');
+                        } catch (err) {
+                          showToast.error('Failed to delete menu item');
+                        }
+                      }
+                    }}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-full"
+                  >
+                    <FaTrash />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Add/Edit Form Modal - Only show for managers */}
+      {canManageMenu && (showAddForm || editingItem) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl w-full max-w-md p-6">
             <h3 className="text-[16px] font-medium text-secondary mb-4">
@@ -136,46 +225,6 @@ export function MenuManager() {
           </div>
         </div>
       )}
-
-      {/* Menu Items List */}
-      <div className="bg-white rounded-xl">
-        <div className="grid gap-2 p-4">
-          {menuItems.map(item => (
-            <div
-              key={item.item_id}
-              className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg"
-            >
-              <div>
-                <h3 className="text-[14px] font-medium text-secondary">{item.name}</h3>
-                <p className="text-[12px] text-secondary-light">₹{item.price}</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setEditingItem(item)}
-                  className="p-2 text-primary hover:bg-primary/10 rounded-full"
-                >
-                  <FaEdit />
-                </button>
-                <button
-                  onClick={async () => {
-                    if (confirm('Are you sure you want to delete this item?')) {
-                      try {
-                        await deleteMenuItem(item.item_id);
-                        showToast.success('Menu item deleted successfully');
-                      } catch (err) {
-                        showToast.error('Failed to delete menu item');
-                      }
-                    }
-                  }}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-full"
-                >
-                  <FaTrash />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 } 

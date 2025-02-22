@@ -3,46 +3,49 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { supabase } from '../lib/supabase';
 import { Logo } from '../components/Logo';
+import { showToast } from '../utils/toast';
 
 export function Login() {
   const navigate = useNavigate();
   const { setUser } = useStore();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
-      // First check if user exists in our users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', username)
-        .single();
+      const formData = new FormData(e.currentTarget);
+      const email = formData.get('email') as string;
+      const password = formData.get('password') as string;
 
-      if (userError || !userData) {
-        throw new Error('Invalid username or password');
-      }
-
-      // Then sign in with Supabase Auth
+      // First authenticate with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: `${username}@example.com`, // Use a consistent email format
-        password: password
+        email,
+        password
       });
 
       if (authError) throw authError;
 
-      console.log('Logged in user:', userData);
+      // Then fetch the user profile
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('auth_id', authData.user.id)
+        .maybeSingle(); // Use maybeSingle instead of single
+
+      if (userError) throw userError;
+      
+      if (!userData) {
+        throw new Error('User profile not found');
+      }
+
       setUser(userData);
+      showToast.success('Login successful');
       navigate('/');
     } catch (err) {
       console.error('Login error:', err);
-      setError('Invalid username or password');
+      showToast.error('Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -75,14 +78,13 @@ export function Login() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-secondary-light text-sm mb-2">
-              Username
+              Email
             </label>
             <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              type="email"
+              name="email"
               className="w-full px-4 py-2 rounded-lg border border-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20"
-              placeholder="Enter your username"
+              placeholder="Enter your email"
               required
               disabled={loading}
             />
@@ -94,18 +96,13 @@ export function Login() {
             </label>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              name="password"
               className="w-full px-4 py-2 rounded-lg border border-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Enter your password"
               required
               disabled={loading}
             />
           </div>
-
-          {error && (
-            <p className="text-sm text-red-500">{error}</p>
-          )}
 
           <button
             type="submit"

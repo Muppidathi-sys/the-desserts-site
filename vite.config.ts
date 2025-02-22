@@ -20,6 +20,7 @@ export default defineConfig({
     include: ['react', 'react-dom', 'react-router-dom', '@supabase/supabase-js', 'zustand']
   },
   build: {
+    outDir: 'dist',
     sourcemap: true,
     rollupOptions: {
       output: {

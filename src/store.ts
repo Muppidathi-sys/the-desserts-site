@@ -82,7 +82,7 @@ const createStore = () => {
               if (orderError) throw orderError;
 
               // Then insert order items without menu_item_id
-              const orderItems = order.items.map(item => ({
+              const orderItems = (order.items || []).map(item => ({
                 order_id: orderData.order_id,
                 name: item.name,
                 quantity: item.quantity,

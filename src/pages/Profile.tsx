@@ -4,7 +4,6 @@ import { useStore } from '../store';
 import { supabase } from '../lib/supabase';
 import { FaUser, FaPhone, FaCalendar, FaSignOutAlt } from 'react-icons/fa';
 import { MdEmail, MdWork } from 'react-icons/md';
-import { MenuManager } from '../components/MenuManager';
 
 export function Profile() {
   const navigate = useNavigate();
@@ -159,13 +158,6 @@ export function Profile() {
           <span className="text-[14px] font-medium">Logout</span>
         </button>
       </div>
-
-      {/* Show menu manager only for managers */}
-      {user?.role === 'manager' && (
-        <div className="bg-white rounded-xl shadow-card p-6">
-          <MenuManager />
-        </div>
-      )}
     </div>
   );
 } 

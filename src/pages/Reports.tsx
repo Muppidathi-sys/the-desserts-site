@@ -1,19 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { formatPrice } from '../utils/format';
-import { Order } from '../types';
-
-interface DailyMetrics {
-  totalSales: number;
-  totalOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
-  cashSales: number;
-  cashOrders: number;
-  gpaySales: number;
-  gpayOrders: number;
-  averageOrderValue: number;
-}
 
 type TimeFrame = 'today' | 'week' | 'month' | 'year';
 

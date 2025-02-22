@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { formatPrice } from '../utils/format';
-import { Order } from '../types';
 import { BsSearch } from 'react-icons/bs';
 
 type FilterStatus = 'all' | 'completed' | 'cancelled';

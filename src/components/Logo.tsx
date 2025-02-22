@@ -1,8 +1,8 @@
 import { GiCupcake } from 'react-icons/gi'; // Using cupcake icon instead
 // or
-import { MdBakeryDining } from 'react-icons/md'; // For bakery icon
+// import { MdBakeryDining } from 'react-icons/md'; // For bakery icon
 // or
-import { FaIceCream } from 'react-icons/fa'; // For dessert icon
+// import { FaIceCream } from 'react-icons/fa'; // For dessert icon
 
 export function Logo() {
   return (

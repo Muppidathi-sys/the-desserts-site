@@ -1,9 +1,11 @@
 export interface OrderItem {
-  order_item_id: string;
-  order_id: string;
+  order_item_id?: string;
+  order_id?: string;
+  item_id: string;
   name: string;
   quantity: number;
   item_price: number;
+  price?: number;
   subtotal: number;
   special_instructions?: string;
   created_at?: string;
@@ -27,7 +29,7 @@ export interface MenuItem {
   item_id: string;
   name: string;
   description: string;
-  price: number; // In INR
+  price: number;
   category: 'mini_waffle' | 'belgian_waffle' | 'bubble_waffle';
   size: 'regular' | 'semi' | 'large';
   created_at: string;
@@ -43,3 +45,5 @@ export interface User {
   avatar_url?: string;
   created_at: string;
 } 
+
+export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled';

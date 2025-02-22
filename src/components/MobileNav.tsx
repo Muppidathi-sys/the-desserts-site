@@ -10,8 +10,6 @@ export function MobileNav() {
   const location = useLocation();
   const { user } = useStore();
 
-  const isActive = (path: string) => location.pathname === path;
-
   return (
     <>
       {/* Mobile Header */}
